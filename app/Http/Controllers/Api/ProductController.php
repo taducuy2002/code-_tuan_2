@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Dotenv\Validator;
 use Illuminate\Http\Request;
+use App\Mail\ProductCreatedMail;
+use Illuminate\Support\Facades\Mail;
+
 
 class ProductController extends Controller
 {
@@ -16,18 +19,28 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric',
+            'description' => 'nullable|string',
+        ]);
+    
         try {
-            Product::query()->create($request->all());
+            $product = Product::create($data);
+    
+            // Gửi email vào queue
+            Mail::to('admin@example.com')->queue(new ProductCreatedMail($product));
+    
             return response()->json([
                 'success' => true,
-                'message' => 'Thêm dữ liệu thành công',
+                'message' => 'Thêm dữ liệu thành công & email đã được đưa vào hàng đợi',
             ], 201);
         } catch (\Throwable $th) {
             return response()->json([
                 'success' => false,
                 'message' => 'Thêm dữ liệu thất bại',
                 'error'   => $th->getMessage(),
-            ], 500);
+            ]);
         }
     }
     
